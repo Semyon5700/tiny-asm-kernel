@@ -1,3 +1,4 @@
+bits 16
 section .data
     prompt db 'Kernel> ', 0
     version_msg db 'Ver 1.0', 0
