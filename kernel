@@ -1,0 +1,134 @@
+section .data
+    prompt db 'Kernel> ', 0
+    version_msg db 'Ver 1.0', 0
+    unknown_cmd db 'Unknown command', 0
+    byterun_prompt db 'Enter bytes: ', 0
+    newline db 0x0D, 0x0A, 0
+    
+section .bss
+    input resb 256
+    byte_buffer resb 16
+    
+section .text
+    global _start
+
+_start:
+    mov esi, version_msg
+    call print_string
+    
+main_loop:
+    mov esi, prompt
+    call print_string
+    
+    mov edi, input
+    call read_string
+    
+    mov esi, input
+    
+    cmp byte [esi], 'v'
+    je version_command
+    cmp byte [esi], 'V'
+    je version_command
+    
+    cmp byte [esi], 'b'
+    je byterun_command
+    cmp byte [esi], 'B'
+    je byterun_command
+    
+    cmp byte [esi], 'p'
+    je print_command
+    cmp byte [esi], 'P'
+    je print_command
+    
+    mov esi, unknown_cmd
+    call print_string
+    jmp main_loop
+
+version_command:
+    mov esi, version_msg
+    call print_string
+    jmp main_loop
+
+byterun_command:
+    mov esi, byterun_prompt
+    call print_string
+    
+    mov edi, byte_buffer
+    call read_hex_bytes
+    
+    call byte_buffer
+    jmp main_loop
+
+print_command:
+    inc esi
+    inc esi
+    call print_string
+    jmp main_loop
+
+print_string:
+    mov ah, 0x0E
+.print_loop:
+    lodsb
+    test al, al
+    jz .done
+    int 0x10
+    jmp .print_loop
+.done:
+    mov al, 0x0D
+    int 0x10
+    mov al, 0x0A
+    int 0x10
+    ret
+
+read_string:
+    xor ecx, ecx
+.read_loop:
+    mov ah, 0x00
+    int 0x16
+    
+    cmp al, 0x0D
+    je .done
+    
+    mov [edi + ecx], al
+    inc ecx
+    
+    mov ah, 0x0E
+    int 0x10
+    
+    cmp ecx, 255
+    jl .read_loop
+.done:
+    mov byte [edi + ecx], 0
+    mov al, 0x0D
+    int 0x10
+    mov al, 0x0A
+    int 0x10
+    ret
+
+read_hex_bytes:
+    xor ecx, ecx
+.hex_loop:
+    mov ah, 0x00
+    int 0x16
+    
+    cmp al, 0x0D
+    je .done
+    
+    mov [edi + ecx], al
+    inc ecx
+    
+    mov ah, 0x0E
+    int 0x10
+    
+    cmp ecx, 15
+    jl .hex_loop
+.done:
+    mov byte [edi + ecx], 0xC3
+    mov al, 0x0D
+    int 0x10
+    mov al, 0x0A
+    int 0x10
+    ret
+
+times 510-($-$$) db 0
+dw 0xAA55
